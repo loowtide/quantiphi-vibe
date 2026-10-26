@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Profile — Kanban{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-10">
+  <h1 class="text-2xl font-bold text-white mb-6">Your Profile</h1>
+
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+    <!-- Avatar -->
+    <div class="flex items-center gap-5 mb-8">
+      {% if profile.avatar %}
+      <img src="{{ profile.avatar.url }}" alt="avatar" class="w-20 h-20 rounded-full object-cover ring-2 ring-brand-500" />
+      {% else %}
+      <div class="w-20 h-20 rounded-full bg-brand-600 flex items-center justify-center text-2xl font-bold text-white">
+        {{ profile.get_initials }}
+      </div>
+      {% endif %}
+      <div>
+        <p class="font-semibold text-lg">{{ user.get_full_name|default:user.username }}</p>
+        <p class="text-slate-400 text-sm">@{{ user.username }}</p>
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<p class="text-red-400 text-xs mt-1">{{ field.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" id="save-profile-btn"
+        class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-6 py-2 rounded-xl transition-all active:scale-95">
+        Save Changes
+      </button>
+    </form>
+  </div>
+</div>
+<style>
+  input, select, textarea { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 0.625rem; padding: 0.625rem 0.875rem; width: 100%; transition: border-color 0.15s; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+</style>
+{% endblock %}

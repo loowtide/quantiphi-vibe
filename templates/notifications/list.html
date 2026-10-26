@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Notifications — Kanban{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-10">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-white">Notifications</h1>
+    {% if notifications %}
+    <form method="post" action="{% url 'notifications:mark_all_read' %}">
+      {% csrf_token %}
+      <button type="submit" class="text-sm text-brand-400 hover:text-brand-300">Mark all as read</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="space-y-2">
+    {% for notif in notifications %}
+    <div class="bg-slate-900 border {% if not notif.is_read %}border-brand-700/50 bg-brand-900/20{% else %}border-slate-800{% endif %} rounded-xl p-4 flex items-start gap-4">
+      <!-- Sender avatar -->
+      <div class="flex-shrink-0">
+        {% with notif.sender.profile as profile %}
+        {% if profile.avatar %}
+        <img src="{{ profile.avatar.url }}" alt="" class="w-9 h-9 rounded-full object-cover" />
+        {% else %}
+        <div class="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-sm font-bold text-brand-300">
+          {{ profile.get_initials|slice:":1" }}
+        </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+      <div class="flex-1">
+        <p class="text-sm text-slate-300">{{ notif.message }}</p>
+        <p class="text-xs text-slate-500 mt-1">{{ notif.created_at|date:"M d, Y H:i" }} · {{ notif.created_at|timesince }} ago</p>
+      </div>
+      {% if not notif.is_read %}
+      <span class="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0 mt-1"></span>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="text-center py-16">
+      <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      </div>
+      <p class="text-slate-500 text-sm">You're all caught up!</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

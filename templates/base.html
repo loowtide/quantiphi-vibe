@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Kanban — Quantiphi{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}A modern Kanban task management app for teams.{% endblock %}" />
+
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#f0f4ff',
+              100: '#e0e9ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#1e1b4b',
+            }
+          },
+          animation: {
+            'pulse-red': 'pulseRed 1.5s ease-in-out infinite',
+            'fade-in': 'fadeIn 0.2s ease-out',
+            'slide-up': 'slideUp 0.25s ease-out',
+          },
+          keyframes: {
+            pulseRed: {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(239,68,68,0.7)' },
+              '50%': { boxShadow: '0 0 0 8px rgba(239,68,68,0)' },
+            },
+            fadeIn: {
+              from: { opacity: '0' },
+              to: { opacity: '1' },
+            },
+            slideUp: {
+              from: { opacity: '0', transform: 'translateY(8px)' },
+              to: { opacity: '1', transform: 'translateY(0)' },
+            },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .kanban-column { min-height: 200px; }
+    .task-card { cursor: grab; }
+    .task-card:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-chosen { transform: scale(1.02); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-flex; }
+    .htmx-request.htmx-indicator { display: inline-flex; }
+  </style>
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-950 text-slate-100" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  {% if user.is_authenticated %}
+  <!-- Navbar -->
+  <nav class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-screen-2xl mx-auto px-4 flex items-center justify-between h-14">
+      <!-- Logo -->
+      <a href="{% url 'projects:list' %}" class="flex items-center gap-2 font-bold text-lg text-brand-500 hover:text-brand-400 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+        Kanban
+      </a>
+
+      <div class="flex items-center gap-3">
+        <!-- Notifications Bell -->
+        <div class="relative" id="notif-dropdown-wrapper">
+          <button id="notif-btn"
+            class="relative p-2 rounded-lg hover:bg-slate-800 transition-colors"
+            onclick="toggleNotifDropdown()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            {% if unread_notification_count > 0 %}
+            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+              {{ unread_notification_count }}
+            </span>
+            {% endif %}
+          </button>
+          <!-- Dropdown -->
+          <div id="notif-dropdown"
+            class="hidden absolute right-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+              <span class="font-semibold text-sm">Notifications</span>
+              <form method="post" action="{% url 'notifications:mark_all_read' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="text-xs text-brand-400 hover:text-brand-300">Mark all read</button>
+              </form>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+              {% for notif in recent_notifications %}
+              <div class="px-4 py-3 border-b border-slate-700/50 hover:bg-slate-700/50 transition-colors {% if not notif.is_read %}bg-brand-900/30{% endif %}">
+                <p class="text-sm text-slate-300">{{ notif.message }}</p>
+                <p class="text-xs text-slate-500 mt-1">{{ notif.created_at|timesince }} ago</p>
+              </div>
+              {% empty %}
+              <div class="px-4 py-6 text-center text-slate-500 text-sm">No notifications</div>
+              {% endfor %}
+            </div>
+            <a href="{% url 'notifications:list' %}" class="block text-center py-2 text-xs text-brand-400 hover:text-brand-300 border-t border-slate-700">View all</a>
+          </div>
+        </div>
+
+        <!-- User Menu -->
+        <div class="relative" id="user-menu-wrapper">
+          <button onclick="toggleUserMenu()"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors text-sm">
+            {% with user.profile as profile %}
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="avatar" class="w-7 h-7 rounded-full object-cover" />
+            {% else %}
+            <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold">
+              {{ profile.get_initials }}
+            </div>
+            {% endif %}
+            {% endwith %}
+            <span class="text-slate-300">{{ user.username }}</span>
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div id="user-menu"
+            class="hidden absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
+            <a href="{% url 'accounts:profile' %}" class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-700 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              Profile
+            </a>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-slate-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <!-- Messages -->
+  {% if messages %}
+  <div id="messages" class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    {% for message in messages %}
+    <div class="animate-slide-up flex items-start gap-3 px-4 py-3 rounded-xl border shadow-xl
+      {% if message.tags == 'success' %}bg-emerald-900/90 border-emerald-700 text-emerald-100
+      {% elif message.tags == 'error' %}bg-red-900/90 border-red-700 text-red-100
+      {% elif message.tags == 'warning' %}bg-amber-900/90 border-amber-700 text-amber-100
+      {% else %}bg-brand-900/90 border-brand-700 text-brand-100{% endif %}">
+      <p class="text-sm">{{ message }}</p>
+      <button onclick="this.parentElement.remove()" class="ml-auto text-slate-400 hover:text-white">✕</button>
+    </div>
+    {% endfor %}
+  </div>
+  <script>
+    setTimeout(() => {
+      const el = document.getElementById('messages');
+      if (el) el.remove();
+    }, 4000);
+  </script>
+  {% endif %}
+
+  <!-- Main Content -->
+  <main class="{% if user.is_authenticated %}{% block main_class %}{% endblock %}{% endif %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Modals container -->
+  <div id="modal-container"></div>
+
+  <script>
+    function toggleNotifDropdown() {
+      const el = document.getElementById('notif-dropdown');
+      const userMenu = document.getElementById('user-menu');
+      userMenu.classList.add('hidden');
+      el.classList.toggle('hidden');
+    }
+    function toggleUserMenu() {
+      const el = document.getElementById('user-menu');
+      const notif = document.getElementById('notif-dropdown');
+      notif.classList.add('hidden');
+      el.classList.toggle('hidden');
+    }
+    // Close dropdowns on outside click
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#notif-dropdown-wrapper')) {
+        document.getElementById('notif-dropdown')?.classList.add('hidden');
+      }
+      if (!e.target.closest('#user-menu-wrapper')) {
+        document.getElementById('user-menu')?.classList.add('hidden');
+      }
+    });
+    // Auto-dismiss messages
+    document.querySelectorAll('#messages > div').forEach(el => {
+      setTimeout(() => el.remove(), 4000);
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}My Projects — Kanban{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-white">My Projects</h1>
+      <p class="text-slate-400 mt-1">Manage your team projects</p>
+    </div>
+    <button id="open-create-modal"
+      onclick="document.getElementById('create-project-modal').classList.remove('hidden')"
+      class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-xl transition-all hover:shadow-lg hover:shadow-brand-500/25 active:scale-95">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      New Project
+    </button>
+  </div>
+
+  <!-- Projects Grid -->
+  {% if projects %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for project in projects %}
+    <a href="{% url 'projects:board' project.pk %}"
+      class="group bg-slate-900 border border-slate-800 hover:border-brand-600/50 rounded-2xl p-5 transition-all duration-200 hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-0.5 block">
+      <div class="flex items-start justify-between mb-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-600/20 flex items-center justify-center text-brand-400 font-bold text-lg">
+          {{ project.name|first|upper }}
+        </div>
+        {% if project.owner == user %}
+        <span class="text-xs bg-brand-900/50 text-brand-400 px-2 py-0.5 rounded-full border border-brand-800">Owner</span>
+        {% endif %}
+      </div>
+      <h2 class="font-semibold text-white text-lg group-hover:text-brand-400 transition-colors mb-1">{{ project.name }}</h2>
+      {% if project.description %}
+      <p class="text-slate-400 text-sm line-clamp-2 mb-3">{{ project.description }}</p>
+      {% endif %}
+      <div class="flex items-center justify-between text-xs text-slate-500 mt-3 pt-3 border-t border-slate-800">
+        <span>{{ project.tasks.count }} task{{ project.tasks.count|pluralize }}</span>
+        <span>{{ project.members.count }} member{{ project.members.count|pluralize }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-24">
+    <div class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    </div>
+    <h3 class="text-lg font-semibold text-slate-400 mb-2">No projects yet</h3>
+    <p class="text-slate-500 text-sm">Create your first project to get started</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Create Project Modal -->
+<div id="create-project-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-slide-up">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">New Project</h2>
+      <button onclick="document.getElementById('create-project-modal').classList.add('hidden')"
+        class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'projects:create' %}" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<p class="text-red-400 text-xs mt-1">{{ field.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('create-project-modal').classList.add('hidden')"
+          class="flex-1 px-4 py-2 rounded-xl border border-slate-700 text-slate-400 hover:bg-slate-800 transition-colors">
+          Cancel
+        </button>
+        <button type="submit" id="create-project-btn"
+          class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-xl transition-all active:scale-95">
+          Create
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  input, select, textarea { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 0.625rem; padding: 0.625rem 0.875rem; width: 100%; outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+</style>
+{% endblock %}

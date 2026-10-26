@@ -1,0 +1,43 @@
+<!-- Task Create Form Modal -->
+<div id="task-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+  <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-slide-up"
+    onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">New Task</h2>
+      <button onclick="document.getElementById('modal-container').innerHTML=''"
+        class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <form
+      hx-post="{% url 'tasks:create' project.pk %}"
+      hx-target="#column-{{ form.initial.status|default:'todo' }}"
+      hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) document.getElementById('modal-container').innerHTML=''"
+      class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<p class="text-red-400 text-xs mt-1">{{ field.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('modal-container').innerHTML=''"
+          class="flex-1 px-4 py-2 rounded-xl border border-slate-700 text-slate-400 hover:bg-slate-800 transition-colors">
+          Cancel
+        </button>
+        <button type="submit" id="create-task-btn"
+          class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-xl transition-all active:scale-95">
+          Create Task
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<style>
+  input, select, textarea { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 0.625rem; padding: 0.625rem 0.875rem; width: 100%; outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+</style>
